@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <script src="https://cdn.jsdelivr.net/pyodide/v0.26.1/full/pyodide.js"></script>
+</head>
+
+<body>
+
+    <script>
+        let pyodide;
+        let inputResolve = null;
+
+        // ---------------- message ----------------
+        window.addEventListener("message", async (e) => {
+            if (e.data.type === "run") {
+                await runPython(e.data.code);
+            }
+
+            if (e.data.type === "inputResult") {
+                if (inputResolve) {
+                    inputResolve(e.data.value);
+                    inputResolve = null;
+                }
+            }
+        });
+
+        // ---------------- init ----------------
+        async function init() {
+            pyodide = await loadPyodide();
+
+            // 出力
+            pyodide.globals.set("js_print", (msg, level = "log") => {
+                msg.split("\n").forEach(line => {
+                    if (line !== "") {
+                        parent.postMessage({
+                            type: "log",
+                            msg: line,
+                            level
+                        }, "*");
+                    }
+                });
+            });
+
+            // input
+            pyodide.globals.set("js_input", (msg) => {
+                return new Promise(resolve => {
+                    inputResolve = resolve;
+                    parent.postMessage({ type: "input", msg }, "*");
+                });
+            });
+
+            // ---------------- Python環境 ----------------
+            await pyodide.runPythonAsync(`
+import sys, builtins, ast, asyncio, traceback
+
+# ---------------- stdout ----------------
+class StdOut:
+    def __init__(self):
+        self.buffer = ""
+
+    def write(self, s):
+        if not s:
+            return
+
+        self.buffer += s
+
+        while "\\n" in self.buffer:
+            line, self.buffer = self.buffer.split("\\n", 1)
+            js_print(line, "log")
+
+    def flush(self):
+        if self.buffer:
+            js_print(self.buffer, "log")
+            self.buffer = ""
+
+# ---------------- stderr ----------------
+class StdErr:
+    def write(self, s):
+        if s:
+            js_print(s, "error")
+    def flush(self): pass
+
+sys.stdout = StdOut()
+sys.stderr = StdErr()
+
+# ---------------- input ----------------
+async def input(prompt=""):
+    return await js_input(prompt)
+
+builtins.input = input
+
+# ---------------- print（完全再現） ----------------
+def print(*args, sep=" ", end="\\n"):
+    text = sep.join(str(a) for a in args) + end
+    sys.stdout.write(text)
+
+builtins.print = print
+
+# ---------------- displayhook ----------------
+def displayhook(v):
+    if v is not None:
+        js_print(repr(v), "info")
+
+sys.displayhook = displayhook
+
+
+# ---------------- AST変換 ----------------
+class InputAwaitTransformer(ast.NodeTransformer):
+    def visit_Call(self, node):
+        self.generic_visit(node)
+        if isinstance(node.func, ast.Name) and node.func.id == "input":
+            return ast.Await(value=node)
+        return node
+
+
+class SleepTransformer(ast.NodeTransformer):
+    def visit_Call(self, node):
+        self.generic_visit(node)
+
+        if isinstance(node.func, ast.Attribute):
+            if node.func.attr == "sleep":
+                return ast.Await(
+                    value=ast.Call(
+                        func=ast.Attribute(
+                            value=ast.Name(id="asyncio", ctx=ast.Load()),
+                            attr="sleep",
+                            ctx=ast.Load()
+                        ),
+                        args=node.args,
+                        keywords=[]
+                    )
+                )
+        return node
+
+
+class WhileTransformer(ast.NodeTransformer):
+    def visit_While(self, node):
+        self.generic_visit(node)
+
+        if isinstance(node.test, ast.Constant) and node.test.value == True:
+            node.body.insert(0,
+                ast.Expr(
+                    value=ast.Await(
+                        value=ast.Call(
+                            func=ast.Attribute(
+                                value=ast.Name(id="asyncio", ctx=ast.Load()),
+                                attr="sleep",
+                                ctx=ast.Load()
+                            ),
+                            args=[ast.Constant(value=0)],
+                            keywords=[]
+                        )
+                    )
+                )
+            )
+        return node
+
+
+def transform_code(code):
+    tree = ast.parse(code)
+
+    tree = InputAwaitTransformer().visit(tree)
+    tree = SleepTransformer().visit(tree)
+    tree = WhileTransformer().visit(tree)
+
+    ast.fix_missing_locations(tree)
+    return tree
+    `);
+            parent.postMessage({ type: "py-ready" }, "*");
+        }
+
+        async function runPython(code) {
+            try {
+                pyodide.globals.set("user_code", code);
+
+                await pyodide.runPythonAsync(`
+import asyncio, ast, traceback
+
+tree = transform_code(user_code)
+
+func = ast.AsyncFunctionDef(
+    name="__main__",
+    args=ast.arguments(posonlyargs=[], args=[], kwonlyargs=[], kw_defaults=[], defaults=[]),
+    body=tree.body,
+    decorator_list=[]
+)
+
+mod = ast.Module(body=[func], type_ignores=[])
+ast.fix_missing_locations(mod)
+
+compiled = compile(mod, "<exec>", "exec")
+
+scope = {
+    "asyncio": asyncio
+}
+
+exec(compiled, scope)
+
+try:
+    await scope["__main__"]()
+except Exception:
+    js_print(traceback.format_exc(), "error")
+`);
+
+            } catch (e) {
+                parent.postMessage({
+                    type: "log",
+                    msg: String(e),
+                    level: "error"
+                }, "*");
+            }
+        }
+
+        init();
+    </script>
+
+</body>
+
+</html>

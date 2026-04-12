@@ -1,0 +1,433 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>Python Editor</title>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.19.0/matter.min.js"></script>
+    <script src="https://unpkg.com/monaco-editor@0.45.0/min/vs/loader.js"></script>
+
+    <link rel="icon"
+        href="data:image/x-icon;base64,AAABAAEAGBgAAAEAIACICQAAFgAAACgAAAAYAAAAMAAAAAEAIAAAAAAAAAkAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAR9b/AEHR/wBF1f8AQ9P/IkLS/3xB0f/AP8//4T7O/+88zf/wO8z/5TrL/8s5yv+TOMn/Nyi9/wA3yP8AN8n/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASdj/AEXV/wBG1f8zRNT/y0PT//5C0v//QND//z/P//8+zv//PM3//zvM//Q5yv/kOMn/4DfJ/1A4yf8AN8n/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASNf/AErZ/wNH1v+jRtX//0TU//9D0///QtL//0DQ//8/z///Pc7//TzN/3I5yv8kOcr/zzjJ/7Q3yf8FOMn/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAASdj/AEnY/wlI1/++R9b//0bV//9E1P//Q9P//0LS//9A0P//P8///j7O/3k8zf8tO8v/0DrL/7w5yv8HOcr/AAAAAAAAAAAAAAAAAAAAAAChcDcAn3A3AKBwNwCfbzcAgJN8AEbf/whJ2P+9SNf//0fW//9G1f//RNT//0PT//9B0f//QND//z/P//g9zv/rPM3//zvM/7o6y/8HOsv/ADnK/wA4yf8AOMr/AAAAAACfbzcAonE3AJ5vNwOebzcPoGovD2+qphBL2v+9Stn//0jX//9H1v//RdX//0TU/+xC0v+JQdH/e0DQ/30+z/9+Pc3/fjzM/1s7y/8HOcr/AzjJ/wI4yv8AOMn/ADjJ/wCjcjcAonE3LKFwN6CfcDfLnm42zZZ4SGNL3f+6S9r//0nZ//9I1///R9b//0XV//NE1P+yQ9P/qULS/6lA0P+pP8//qT3O/6o8zf+tO8z/rjnK/6g4yf9tOMn/EjjJ/wClczcfo3I3xaJxN/+gcDf/n283/5h3RXtL3v+5TNv//0va//9J2P//SNf//0fW//9F1f//RNT//0PS//9B0f//QND//z7P//89zv//PMz//zrL//85yv//OMn/oDfJ/w6mdDd+pXM3/qRyN/+icTf/oXA3/5p3RXhN3/+4Ttz//0zb//9L2v//Sdj//0jX//9H1v//RdX//0TU//9C0v//QdH//0DQ//8+z///Pc7//zzM//86y///Ocr/+TjJ/2aodTfJp3Q3/6VzN/+kcjf/onE3/6ByOn5O4f+dT93//03c//9M2///S9r//0nY//9I1///R9b//0XV//9E1P//QtL//0HR//9A0P//Ps///z3N//88zP//Osv//znK/7updjftqHU3/6d0N/+lczf/o3I3/6RwNLFZ0+pIT9//4E/d//9N3P//TNv//0vZ//9J2P//SNf//0bW//9F1f//RNP//0LS//9B0f//QND//z7P//89zf//O8z//zrL/+Wrdjf7qnY3/6h1N/+ndDf/pXM3/6RyN/ajcTdyYMrZQE/e/4ZO3f+lTNz/p0vb/6dK2v+nSNn/p0fY/6ZE2P+pRNb/zkTT//xC0v//QdH//0DQ//8+z///Pc3//zzM//atdzf8q3c3/6p2N/+odTf/p3Q3/6VzN/+kcjf3o3A0v6JvNJmfcTmZnXA5mZtvOZmabjmZmG05mZdsOZeUbTt3eZB9PETV/4NE0//6QtL//0HR//8/0P//Ps7//z3N//aueDfurXc3/6t3N/+qdjf/qHU3/6d0N/+lczf/o3I3/6JxN/+gcDf/n283/51uN/+cbTb/mm02/5lsNv+Xazb/l2k00oSAYEFE1v+9RNP//0LS//9B0f//P9D//z7P/+iveTjHrng3/613N/+rdjf/qnY3/6h1N/+ndDf/pXM3/6NyN/+icTf/oHA3/59vN/+dbjf/nG42/5ptNv+ZbDb/l2s2/5hoMpJG1f+GRdT//0PT//9C0v//QdH//z/Q/8Wwejh1sHk4/K54N/+tdzf/q3Y3/6p2N/+odTf/p3Q3/6VzN/+jcjf/onE3/6BwN/+fbzf/nW43/5xuNv+abTb/mWw2/5lpMrJL0fZ+Rtb//0XU//9D0///QtL//kHR/32xejgWsXo4sbB5OP+ueDf/rXc3/6t2N/+qdjf/qHU3/6Z0N/+lczf/o3I3/6JxN/+gcDf/n283/51uN/+cbTb/mm02/5tqMrRM0vWAR9f//0bV//9F1P//Q9P/yULS/yCxejgAsXo4GrF6OICveTi4rng3vKx3N7yrdje5qXU3uKh0N7imdDe4pXM3t6NyN8CicTf2oHA3/59vN/+dbjf/nG02/5xrMrRO0vNsSNj/2kfW/9dG1f+tRdT/MkTU/wCxejgAsXo4ALB5OACweTgGr3k3CK54NwytdzdWrHc3cqp2N3GodTdxp3Q3b6VzN4GjcjftonE3/6BwN/+fbzf/nW43/5xtNrdosrUSSNr/GEjX/xdH1/8HRNT/AD3N/wCxejgAsXo4ALF6OACweTgArng3AK95NwmueDe/rXc3/6t2N/GpdTf6qHU3/6Z0N/+lczf/o3I3/6JxN/+gcDf/n283/51vN7enYB0GWsLWAEjX/wBH1v8ASNf/AEbV/wAAAAAAAAAAAAAAAAAAAAAAsHk4ALB6OAmveTjCrng30Kx3NziqdjeJqXY3/6h1N/+mdDf/pXM3/6NyN/+icTf/oHA3/59vN7iebzcHnm83AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsXo4ALJ6OAexeji9sHk4xLB5OBesdzdwq3Y3/ql2N/+odTf/pnQ3/6VzN/+jcjf/onE3/6FwN6GdbjcCoHA3AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsno4ALF6OACyejhfsXo46LB5ONqueDfwrHc3/6t2N/+pdTf/qHU3/6Z0N/+lczf/o3I30qJxNzeicTcAnG43AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAsno4ALJ7OACzfDgDsno4SLB6OKmveTjdrng39ax3N/2rdjf8qXU38Kh0N9CmczeMpXM3KqJxNwCkczcAoHA3AAAAAAAAAAAAAAAAAAAAAADwAA8A8AAPAPAADwDwAA8AAAABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAPAADwDwAA8A8AAPAPAADwA=">
+
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #111;
+        }
+
+        #loader {
+            position: fixed;
+            inset: 0;
+            background: #111;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 5000;
+        }
+
+        .loader-box {
+            text-align: center;
+            color: white;
+            font-family: sans-serif;
+        }
+
+        .loader-text {
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+
+        .progress-bar {
+            width: 250px;
+            height: 6px;
+            background: #333;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            width: 0%;
+            background: #4fc3f7;
+            transition: width 0.2s;
+        }
+
+        #runBtn {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+            padding: 10px 20px;
+        }
+
+        #speedSlider {
+            position: fixed;
+            top: 12px;
+            left: 100px;
+            z-index: 1000;
+        }
+
+        #speedLabel {
+            position: fixed;
+            top: 10px;
+            left: 260px;
+            color: white;
+            z-index: 1000;
+        }
+
+        #editor {
+            position: absolute;
+            top: 50px;
+            width: 100%;
+            height: calc(100vh - 50px);
+        }
+
+        .piece {
+            position: absolute;
+            font-family: Consolas, monospace;
+            font-size: 18px;
+            white-space: pre;
+            padding: 10px 14px;
+            user-select: none;
+            text-shadow: 0 0 5px rgba(0, 0, 0, 0.8);
+
+            cursor: -moz-grab;
+            cursor: -webkit-grab;
+            cursor: grab;
+        }
+
+        .piece.log {
+            color: #4fc3f7;
+        }
+
+        .piece.info {
+            color: #00ff88;
+        }
+
+        .piece.warn {
+            color: #ffd54d;
+        }
+
+        .piece.error {
+            color: #ff4d4d;
+        }
+
+
+        .particle {
+            position: fixed;
+            pointer-events: none;
+            z-index: 2000;
+            font-family: Consolas, monospace;
+            font-size: 14px;
+            color: white;
+        }
+    </style>
+    <style>
+        @keyframes wave {
+            from {
+                width: 10px;
+                height: 10px;
+                opacity: 1;
+            }
+
+            to {
+                width: 150px;
+                height: 150px;
+                opacity: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div id="loader">
+        <div class="loader-box">
+            <div class="loader-text">Loading Python Compiler...</div>
+            <div class="progress-bar">
+                <div class="progress"></div>
+            </div>
+        </div>
+    </div>
+
+    <button id="runBtn">▶ Run</button>
+    <input id="speedSlider" type="range" min="0.2" max="3" step="0.1" value="1">
+    <span id="speedLabel">1.0x</span>
+
+    <div id="editor"></div>
+    <iframe id="pyFrame" src="python.html" style="display:none;"></iframe>
+
+    <script>
+        const loader = document.getElementById("loader");
+        const progress = document.querySelector(".progress");
+
+        let p = 0;
+        const interval = setInterval(() => {
+            p = Math.min(p + Math.random() * 10, 90);
+            progress.style.width = p + "%";
+        }, 200);
+
+        window.addEventListener("message", (e) => {
+            if (e.data.type === "py-ready") {
+                progress.style.width = "100%";
+
+                setTimeout(() => {
+                    loader.style.opacity = "0";
+                    loader.style.transition = "opacity 0.5s";
+                    setTimeout(() => loader.remove(), 500);
+                }, 300);
+
+                clearInterval(interval);
+            }
+        });
+
+        let editor;
+        let engine, world;
+        let bodies = [];
+
+        const pyFrame = document.getElementById("pyFrame").contentWindow;
+
+        function randomChar() {
+            const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+            return chars[Math.floor(Math.random() * chars.length)];
+        }
+
+        function createExplosion(x, y) {
+            const wave = document.createElement("div");
+            wave.style.position = "fixed";
+            wave.style.left = x + "px";
+            wave.style.top = y + "px";
+            wave.style.width = "10px";
+            wave.style.height = "10px";
+            wave.style.borderRadius = "50%";
+            wave.style.border = "2px solid rgba(255,255,255,0.8)";
+            wave.style.transform = "translate(-50%, -50%)";
+            wave.style.animation = "wave 0.5s ease-out forwards";
+            document.body.appendChild(wave);
+
+            setTimeout(() => wave.remove(), 500);
+
+            for (let i = 0; i < 18; i++) {
+                const p = document.createElement("div");
+                p.className = "particle";
+                p.textContent = randomChar();
+
+                p.style.left = x + "px";
+                p.style.top = y + "px";
+
+                document.body.appendChild(p);
+
+                let angle = Math.random() * Math.PI * 2;
+                let speed = Math.random() * 6 + 2;
+                let vx = Math.cos(angle) * speed;
+                let vy = Math.sin(angle) * speed;
+
+                let life = 0;
+
+                function animate() {
+                    life++;
+
+                    vx *= 0.96;
+                    vy *= 0.96;
+
+                    const rect = p.getBoundingClientRect();
+                    p.style.left = rect.left + vx + "px";
+                    p.style.top = rect.top + vy + "px";
+
+                    p.style.opacity = 1 - life / 40;
+
+                    if (life < 40) requestAnimationFrame(animate);
+                    else p.remove();
+                }
+
+                animate();
+            }
+        }
+
+        // ---------------- Monaco ----------------
+        require.config({ paths: { vs: 'https://unpkg.com/monaco-editor@0.45.0/min/vs' } });
+
+        require(["vs/editor/editor.main"], function () {
+            editor = monaco.editor.create(document.getElementById("editor"), {
+                value: `print("Hello")
+print(1+2)
+`,
+                language: "python",
+                theme: "vs-dark"
+            });
+        });
+
+        // ---------------- Physics ----------------
+        function initPhysics() {
+            engine = Matter.Engine.create();
+            world = engine.world;
+
+            const w = window.innerWidth;
+            const h = window.innerHeight;
+
+            const thickness = 100;
+            const margin = 50;
+
+            const ground = Matter.Bodies.rectangle(w / 2, h - margin, w, thickness, { isStatic: true, label: "wall" });
+            const ceiling = Matter.Bodies.rectangle(w / 2, margin, w, thickness, { isStatic: true, label: "wall" });
+            const left = Matter.Bodies.rectangle(margin, h / 2, thickness, h, { isStatic: true, label: "wall" });
+            const right = Matter.Bodies.rectangle(w - margin, h / 2, thickness, h, { isStatic: true, label: "wall" });
+
+            Matter.World.add(world, [ground, ceiling, left, right]);
+
+            Matter.Runner.run(Matter.Runner.create(), engine);
+
+            // 衝突 → 爆発
+            Matter.Events.on(engine, "collisionStart", (event) => {
+                event.pairs.forEach(pair => {
+                    [pair.bodyA, pair.bodyB].forEach(body => {
+                        const obj = bodies.find(o => o.body === body);
+                        if (!obj) return;
+
+                        const vx = body.velocity.x;
+                        const vy = body.velocity.y;
+                        const speed = Math.sqrt(vx * vx + vy * vy);
+
+                        if (speed > 15) {
+                            const pos = body.position;
+
+                            createExplosion(pos.x, pos.y);
+
+                            Matter.World.remove(world, body);
+                            obj.el.remove();
+
+                            bodies = bodies.filter(o => o !== obj);
+                        }
+                    });
+                });
+            });
+
+            (function update() {
+                bodies.forEach(obj => {
+                    const pos = obj.body.position;
+                    const angle = obj.body.angle;
+
+                    obj.el.style.transform =
+                        `translate(${pos.x}px,${pos.y}px) rotate(${angle}rad)`;
+                });
+
+                requestAnimationFrame(update);
+            })();
+        }
+
+        function createPiece(text, type = "log") {
+            const el = document.createElement("div");
+            el.className = "piece " + type;
+            el.textContent = text;
+            document.body.appendChild(el);
+
+            const rect = el.getBoundingClientRect();
+
+            const x = window.innerWidth / 2 + (Math.random() - 0.5) * 200;
+            const y = 100;
+
+            const body = Matter.Bodies.rectangle(x, y, rect.width, rect.height, {
+                restitution: 0.5
+            });
+
+            Matter.World.add(world, body);
+            bodies.push({ body, el });
+
+            // ---------------- ドラッグ＆投げ ----------------
+            let dragging = false;
+            let offsetX = 0;
+            let offsetY = 0;
+
+            let lastMouse = null;
+            let lastTime = null;
+
+            el.addEventListener("mousedown", (e) => {
+                dragging = true;
+
+                const rect = el.getBoundingClientRect();
+                offsetX = e.clientX - rect.left;
+                offsetY = e.clientY - rect.top;
+
+                lastMouse = { x: e.clientX, y: e.clientY };
+                lastTime = performance.now();
+
+                Matter.Body.setVelocity(body, { x: 0, y: 0 });
+            });
+
+            window.addEventListener("mousemove", (e) => {
+                if (!dragging) return;
+
+                const now = performance.now();
+                const dt = now - lastTime || 1;
+
+                const dx = e.clientX - lastMouse.x;
+                const dy = e.clientY - lastMouse.y;
+
+                // 位置を追従
+                Matter.Body.setPosition(body, {
+                    x: e.clientX - offsetX,
+                    y: e.clientY - offsetY
+                });
+
+                // 投げ用速度を更新
+                const vx = dx / dt * 16;
+                const vy = dy / dt * 16;
+
+                body.velocity.x = vx;
+                body.velocity.y = vy;
+
+                lastMouse = { x: e.clientX, y: e.clientY };
+                lastTime = now;
+            });
+
+            window.addEventListener("mouseup", () => {
+                if (!dragging) return;
+                dragging = false;
+            });
+        }
+
+        window.addEventListener("message", (e) => {
+            const data = e.data;
+
+            if (data.type === "log") {
+                createPiece(data.msg, data.level || "log");
+            }
+
+            if (data.type === "input") {
+                const result = prompt(data.msg || "input:");
+                pyFrame.postMessage({
+                    type: "inputResult",
+                    value: result
+                }, "*");
+            }
+        });
+
+        // ---------------- Run ----------------
+        document.getElementById("runBtn").onclick = () => {
+            bodies.forEach(b => Matter.World.remove(world, b.body));
+            bodies = [];
+
+            pyFrame.postMessage({
+                type: "run",
+                code: editor.getValue()
+            }, "*");
+        };
+
+        // ---------------- Speed ----------------
+        const slider = document.getElementById("speedSlider");
+        const label = document.getElementById("speedLabel");
+
+        slider.addEventListener("input", (e) => {
+            const v = parseFloat(e.target.value);
+            label.textContent = v.toFixed(1) + "x";
+            if (engine) engine.timing.timeScale = v;
+        });
+
+        // ---------------- init ----------------
+        initPhysics();
+    </script>
+
+</body>
+
+</html>
