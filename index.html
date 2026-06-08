@@ -30,7 +30,7 @@
 
         /* cyrillic-ext */
         @font-face {
-            font-family: 'm';
+            font-family: 'Press Start 2P';
             font-style: normal;
             font-weight: 400;
             font-display: swap;
@@ -40,7 +40,7 @@
 
         /* cyrillic */
         @font-face {
-            font-family: 'm';
+            font-family: 'Press Start 2P';
             font-style: normal;
             font-weight: 400;
             font-display: swap;
@@ -50,7 +50,7 @@
 
         /* greek */
         @font-face {
-            font-family: 'm';
+            font-family: 'Press Start 2P';
             font-style: normal;
             font-weight: 400;
             font-display: swap;
@@ -60,7 +60,7 @@
 
         /* latin-ext */
         @font-face {
-            font-family: 'm';
+            font-family: 'Press Start 2P';
             font-style: normal;
             font-weight: 400;
             font-display: swap;
@@ -70,7 +70,7 @@
 
         /* latin */
         @font-face {
-            font-family: 'm';
+            font-family: 'Press Start 2P';
             font-style: normal;
             font-weight: 400;
             font-display: swap;
@@ -370,6 +370,7 @@
                     playSE(seGameOver);
                 }
 
+                // タイマー処理
                 if (player.giantTimer > 0) {
                     player.giantTimer -= 1 * dt;
                     player.width = player.baseWidth * 1.5;
@@ -387,11 +388,13 @@
                     if (player.starTimer < 0) player.starTimer = 0;
                 }
 
+                // 入力と状態管理
                 if (player.state === "NORMAL" || player.state === "POST_CLEAR") {
                     if (keys.left) { player.vx = -WALK_SPEED; player.facing = "left"; }
                     else if (keys.right) { player.vx = WALK_SPEED; player.facing = "right"; }
                     else player.vx = 0;
 
+                    // ★重力の加算はここ「1箇所」だけに統一します
                     player.vy += 0.6 * dt;
 
                     if (keys.jump && player.isGrounded) {
@@ -441,80 +444,89 @@
                     }
                 }
 
+                // ==========================================
+                // 【最重要】Y軸の正確な移動と衝突判定（一元化）
+                // ==========================================
+                let totalMoveY = player.vy * dt;
+                let stepLimit = 10;
+                let absMoveY = Math.abs(totalMoveY);
+                let steps = Math.ceil(absMoveY / stepLimit);
+                player.isGrounded = false; // ループ前に一度接地をリセット
+                let stepMoveY = totalMoveY / steps;
+
+                for (let s = 0; s < steps; s++) {
+                    player.y += stepMoveY;
+                    let hitSomething = false;
+
+                    // 1. 通常の床（platforms）との判定
+                    for (let i = 0; i < platforms.length; i++) {
+                        let plat = platforms[i];
+                        if (checkCollision(player, plat)) {
+                            if (player.vy > 0) { player.y = plat.y - player.height; player.vy = 0; player.isGrounded = true; }
+                            else if (player.vy < 0) { player.y = plat.y + plat.height; player.vy = 0; }
+                            hitSomething = true; break;
+                        }
+                    }
+
+                    // 2. アイテムブロック（itemBlocks）との判定（頭突きアイテム出現処理も統合）
+                    if (!hitSomething) {
+                        for (let i = 0; i < itemBlocks.length; i++) {
+                            let block = itemBlocks[i];
+                            if (checkCollision(player, block)) {
+                                if (player.vy > 0) {
+                                    player.y = block.y - player.height; player.vy = 0; player.isGrounded = true;
+                                } else if (player.vy < 0) {
+                                    player.y = block.y + block.height; player.vy = 0;
+                                    // 頭突き成功時の処理
+                                    if (!block.hit && gameState === "PLAY") {
+                                        block.hit = true;
+                                        coinCount++;
+                                        block.coinAnimY = block.y - 20;
+                                        block.coinAnimTimer = 15;
+                                        playSE(seCoin);
+                                    }
+                                }
+                                hitSomething = true; break;
+                            }
+                        }
+                    }
+                    if (hitSomething) break;
+                }
+
+                // X軸の移動と画面外チェック
                 player.x += player.vx * dt;
                 if (player.x < 0) player.x = 0;
                 if (player.x + player.width > MAP_WIDTH) player.x = MAP_WIDTH - player.width;
 
-                player.y += player.vy * dt;
+                // ❌ ここにあった古い重複判定、および描画手前の「player.y += player.vy * dt;」は完全に削除しました。
 
-                if (player.state === "NORMAL" || player.state === "POST_CLEAR") {
-                    player.isGrounded = false;
-                }
-
-                for (let i = 0; i < platforms.length; i++) {
-                    let plat = platforms[i];
-                    if (checkCollision(player, plat)) {
-                        if (player.vy > 0 && player.y + player.height - (player.vy * dt) <= plat.y) {
-                            player.y = plat.y - player.height;
-                            player.vy = 0;
-                            player.isGrounded = true;
-                        } else if (player.vy < 0 && player.y - (player.vy * dt) >= plat.y + plat.height) {
-                            player.y = plat.y + plat.height;
-                            player.vy = 0;
-                        }
-                    }
-                }
-
-                for (let i = 0; i < itemBlocks.length; i++) {
-                    let block = itemBlocks[i];
-                    if (checkCollision(player, block)) {
-                        if (player.vy > 0 && player.y + player.height - (player.vy * dt) <= block.y) {
-                            player.y = block.y - player.height;
-                            player.vy = 0;
-                            player.isGrounded = true;
-                        } else if (player.vy < 0 && player.y - (player.vy * dt) >= block.y + block.height) {
-                            player.y = block.y + block.height;
-                            player.vy = 0;
-                            if (!block.hit && gameState === "PLAY") {
-                                block.hit = true;
-                                coinCount++;
-                                block.coinAnimY = block.y - 20;
-                                block.coinAnimTimer = 15;
-                                playSE(seCoin);
-                            }
-                        }
-                    }
-                }
-
+                // カメラ制御
                 if (player.x > canvas.width / 2) cameraX = player.x - canvas.width / 2;
                 if (cameraX < 0) cameraX = 0;
 
                 let maxCamX = (gameState === "PLAY") ? (goalFlag.x - canvas.width + 150) : (MAP_WIDTH - canvas.width);
                 if (cameraX > maxCamX) cameraX = maxCamX;
 
+                // アイテム・敵の処理
                 if (gameState === "PLAY") {
                     for (let i = 0; i < coins.length; i++) {
                         let coin = coins[i];
                         if (!coin.collected && checkCollision(player, coin)) {
-                            coin.collected = true;
-                            coinCount++;
-                            playSE(seCoin);
+                            coin.collected = true; coinCount++; playSE(seCoin);
                         }
                     }
 
                     for (let i = 0; i < mushrooms.length; i++) {
                         let mush = mushrooms[i];
                         if (!mush.collected && checkCollision(player, mush)) {
-                            mush.collected = true;
-                            player.giantTimer = 600;
+                            mush.collected = true; player.giantTimer = 600;
                         }
                     }
 
                     for (let i = 0; i < stars.length; i++) {
                         let star = stars[i];
                         if (!star.collected && checkCollision(player, star)) {
-                            star.collected = true;
-                            player.starTimer = 600;
+                            star.collected = true; player.starTimer = 600;
                         }
                     }
 
@@ -532,27 +544,19 @@
 
                         if (checkCollision(player, enemy)) {
                             if (player.starTimer > 0) {
-                                enemy.alive = false;
-                                coinCount++;
-                                playSE(seCoin);
+                                enemy.alive = false; coinCount++; playSE(seCoin);
                             } else if (player.vy > 0 && player.y + player.height - (player.vy * dt) <= enemy.y + 15) {
-                                enemy.alive = false;
-                                player.vy = -8;
-                                coinCount++;
-                                playSE(seCoin);
+                                enemy.alive = false; player.vy = -8; coinCount++; playSE(seCoin);
                             } else {
-                                gameState = "GAMEOVER";
-                                audioBgm.pause();
-                                playSE(seGameOver);
+                                gameState = "GAMEOVER"; audioBgm.pause(); playSE(seGameOver);
                             }
                         }
                     }
                 }
 
                 if (player.y > canvas.height) {
-                    gameState = "GAMEOVER"; audioBgm.pause();
-                    playSE(seGameOver);
-                };
+                    gameState = "GAMEOVER"; audioBgm.pause(); playSE(seGameOver);
+                }
             }
 
             if (gameState === "CASTLE") {
@@ -561,6 +565,7 @@
                 }
             }
 
+            // 描画処理
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             ctx.save();
 
@@ -573,6 +578,7 @@
                 ctx.translate(-Math.round(targetCameraX), 0);
             }
 
+            // 描画
             platforms.forEach(plat => {
                 ctx.fillStyle = plat.color;
                 ctx.fillRect(Math.round(plat.x), Math.round(plat.y), plat.width, plat.height);
@@ -580,31 +586,15 @@
                 ctx.strokeRect(Math.round(plat.x), Math.round(plat.y), plat.width, plat.height);
             });
 
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "10px 'm'";
-            ctx.textAlign = "center";
+            ctx.fillStyle = "#ffffff"; ctx.font = "10px 'Press Start 2P'"; ctx.textAlign = "center";
             ctx.fillText("↓ America", 400, 330);
-            ctx.textAlign = "left";
-
-            ctx.fillStyle = "#ffffff";
-            ctx.font = "10px 'm'";
-            ctx.textAlign = "center";
             ctx.fillText("↓ Mexico", 5930, 100);
             ctx.textAlign = "left";
 
-            ctx.drawImage(
-                castleImg,
-                0, 0, 200, 160,
-                Math.round(castle.x), Math.round(castle.y),
-                castle.width, castle.height
-            );
+            ctx.drawImage(castleImg, 0, 0, 200, 160, Math.round(castle.x), Math.round(castle.y), castle.width, castle.height);
 
             if (gameState === "CASTLE") {
-                ctx.drawImage(
-                    customFlagImg,
-                    Math.round(window.castleFlag.x), Math.round(window.castleFlag.y),
-                    90, 51
-                );
+                ctx.drawImage(customFlagImg, Math.round(window.castleFlag.x), Math.round(window.castleFlag.y), 90, 51);
             }
 
             ctx.fillStyle = "#ffffff";
@@ -617,7 +607,7 @@
                 ctx.fillStyle = block.hit ? "#777777" : block.color;
                 ctx.fillRect(bx, by, block.width, block.height);
                 ctx.strokeStyle = "#000"; ctx.lineWidth = 2; ctx.strokeRect(bx, by, block.width, block.height);
-                if (!block.hit) { ctx.fillStyle = "#fff"; ctx.font = "10px 'm'"; ctx.fillText("?", bx + 11, by + 22); }
+                if (!block.hit) { ctx.fillStyle = "#fff"; ctx.font = "10px 'Press Start 2P'"; ctx.fillText("?", bx + 11, by + 22); }
 
                 if (block.coinAnimTimer > 0) {
                     ctx.drawImage(coinImg, bx + 4, Math.round(block.coinAnimY), 24, 24);
@@ -631,25 +621,20 @@
 
             enemies.forEach(enemy => {
                 if (enemy.alive) {
-                    let ex = Math.round(enemy.x);
-                    let ey = Math.round(enemy.y);
+                    let ex = Math.round(enemy.x); let ey = Math.round(enemy.y);
                     if (enemy.type === "walk") ctx.drawImage(enemyImg, ex, ey, enemy.width, enemy.height);
                     else if (enemy.type === "fly") ctx.drawImage(flyingEnemyImg, ex, ey, enemy.width, enemy.height);
                 }
             });
 
-            // プレイヤーの描画部分
             if (gameState !== "CASTLE") {
                 ctx.save();
-                let px = Math.round(player.x);
-                let py = Math.round(player.y);
+                let px = Math.round(player.x); let py = Math.round(player.y);
 
                 if (player.starTimer > 0) {
-                    ctx.shadowBlur = 20;
-                    ctx.shadowColor = (Math.floor(player.starTimer / 4) % 2 === 0) ? "#ffcc00" : "#ff3300";
+                    ctx.shadowBlur = 20; ctx.shadowColor = (Math.floor(player.starTimer / 4) % 2 === 0) ? "#ffcc00" : "#ff3300";
                 } else if (player.giantTimer > 0) {
-                    ctx.shadowBlur = 15;
-                    ctx.shadowColor = "#ff3333";
+                    ctx.shadowBlur = 15; ctx.shadowColor = "#ff3333";
                 }
 
                 if (player.facing === "left") {
@@ -663,41 +648,33 @@
             ctx.restore();
 
             if (gameState === "START") {
-                ctx.fillStyle = "rgba(0, 0, 0, 0.85)";
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-                ctx.fillStyle = "#ffffff";
-                ctx.font = "30px 'm'";
-                ctx.textAlign = "center";
+                ctx.fillStyle = "rgba(0, 0, 0, 0.85)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#ffffff"; ctx.font = "30px 'Press Start 2P'"; ctx.textAlign = "center";
                 ctx.fillText("SUPER SOVIET COMRADE", canvas.width / 2, canvas.height / 2 - 20);
-
-                ctx.fillStyle = "#fcb43c";
-                ctx.font = "24px 'm'";
+                ctx.fillStyle = "#fcb43c"; ctx.font = "24px 'Press Start 2P'";
                 ctx.fillText("CLICK TO START", canvas.width / 2, canvas.height / 2 + 40);
-
                 ctx.textAlign = "left";
             }
 
-            ctx.fillStyle = "#fff"; ctx.font = "bold 15px 'm', Courier, monospace";
+            ctx.fillStyle = "#fff"; ctx.font = "bold 15px 'Press Start 2P', Courier, monospace";
             ctx.drawImage(coinImg, 20, 15, 25, 25); ctx.fillText("×" + String(coinCount).padStart(2, '0'), 55, 36);
             if (player.giantTimer > 0) { ctx.fillStyle = "#ff3333"; ctx.font = "bold 18px Arial"; ctx.fillText("GIANT: " + Math.ceil(player.giantTimer / 60) + "s", canvas.width / 2 - 40, 36); }
             if (player.starTimer > 0) {
-                ctx.fillStyle = "#ffcc00";
-                ctx.font = "bold 18px Arial";
+                ctx.fillStyle = "#ffcc00"; ctx.font = "bold 18px Arial";
                 ctx.fillText("INVINCIBLE: " + Math.ceil(player.starTimer / 60) + "s", canvas.width / 2 - 60, 60);
             }
             ctx.textAlign = "right"; ctx.fillText("TIME: " + String(timeRemaining).padStart(3, '0'), canvas.width - 20, 36); ctx.textAlign = "left";
 
             if (gameState === "GAMEOVER") {
                 ctx.fillStyle = "rgba(0,0,0,0.75)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "#ff3333"; ctx.font = "bold 30px 'm''"; ctx.textAlign = "center"; ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
-                ctx.fillStyle = "#ffffff"; ctx.font = "10px 'm'"; ctx.fillText("Click to Restart", canvas.width / 2, canvas.height / 2 + 30); ctx.textAlign = "left";
+                ctx.fillStyle = "#ff3333"; ctx.font = "70px 'Press Start 2P''"; ctx.textAlign = "center"; ctx.fillText("GAME OVER", canvas.width / 2, canvas.height / 2 - 20);
+                ctx.fillStyle = "#ffffff"; ctx.font = "10px 'Press Start 2P'"; ctx.fillText("Click to Restart", canvas.width / 2, canvas.height / 2 + 30); ctx.textAlign = "left";
             }
 
             if (gameState === "CASTLE") {
                 ctx.fillStyle = "rgba(0,0,0,0.4)"; ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.fillStyle = "#fff"; ctx.font = "bold 30px 'm''"; ctx.textAlign = "center"; ctx.fillText("GAME CLEAR", canvas.width / 2, canvas.height / 2);
-                ctx.font = "10px 'm'"; ctx.fillText("THANK YOU FOR PLAYING!", canvas.width / 2, canvas.height / 2 + 50); ctx.textAlign = "left";
+                ctx.fillStyle = "#fff"; ctx.font = "bold 70px 'Press Start 2P''"; ctx.textAlign = "center"; ctx.fillText("GAME CLEAR", canvas.width / 2, canvas.height / 2);
+                ctx.font = "10px 'Press Start 2P'"; ctx.fillText("THANK YOU FOR PLAYING!", canvas.width / 2, canvas.height / 2 + 50); ctx.textAlign = "left";
             }
 
             requestAnimationFrame(update);
